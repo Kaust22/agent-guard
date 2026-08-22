@@ -1,0 +1,549 @@
+<!--
+  AgentGuard - frontend for Problem Statement 4 (AI agent reliability/security testing)
+  single HTML file on purpose so it's easy to just open and demo, no build step needed.
+  backend team is on /generate-tests and /evaluate separately - see comments in the
+  script tag below for where those hook in once they're ready.
+-->
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AgentGuard — AI Agent Reliability & Security Platform</title>
+<link rel="stylesheet" href="styling.css">
+</head>
+
+<body>
+
+    <div class="shell">
+        <!-- SIDEBAR -->
+        <aside class="sidebar">
+            <div class="brand">
+                <div class="brand-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="#22d3b8" stroke-width="2">
+                        <path d="M12 2l8 3.5v6c0 5-3.5 8.5-8 10.5-4.5-2-8-5.5-8-10.5v-6L12 2z" />
+                        <path d="M9 12l2 2 4-4" />
+                    </svg>
+                </div>
+                <div class="brand-text">
+                    <span class="name">AGENTGUARD</span>
+                    <span class="tag">Reliability Platform</span>
+                </div>
+            </div>
+            <div class="sys-status"><span class="sys-dot"></span> SYSTEM READY</div>
+
+            <div class="editorial-side-copy">
+                <div class="editorial-side-kicker">AI AGENT / SECURITY INTELLIGENCE</div>
+                <h2>Test before<br><em>you trust.</em></h2>
+                <p>Expose unsafe decisions, risky tool calls and reliability regressions before your agent reaches
+                    production.</p>
+                <div class="editorial-side-rule"></div>
+                <div class="editorial-side-quote">“Every autonomous action deserves a clear safety boundary.”</div>
+            </div>
+
+            <div class="nav-group">
+                <div class="nav-label">Overview</div>
+                <button class="nav-item" data-view="dashboard" onclick="nav('dashboard')">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="3" width="7" height="9" rx="1.5" />
+                        <rect x="14" y="3" width="7" height="5" rx="1.5" />
+                        <rect x="14" y="12" width="7" height="9" rx="1.5" />
+                        <rect x="3" y="16" width="7" height="5" rx="1.5" />
+                    </svg>
+                    Dashboard
+                </button>
+            </div>
+
+            <div class="nav-group">
+                <div class="nav-label">Evaluation</div>
+                <button class="nav-item" data-view="setup" onclick="nav('setup')">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="8" r="4" />
+                        <path d="M4 21c0-4 3.5-7 8-7s8 3 8 7" />
+                    </svg>
+                    Agent Setup
+                </button>
+                <button class="nav-item" data-view="attacklab" onclick="nav('attacklab')">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 2l2.5 6.5L21 11l-6.5 2.5L12 20l-2.5-6.5L3 11l6.5-2.5z" />
+                    </svg>
+                    Attack Lab
+                    <span class="nav-badge" id="navTestCount">0</span>
+                </button>
+                <button class="nav-item" data-view="traces" onclick="nav('traces')">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M3 12h4l2-7 4 14 2-7h6" />
+                    </svg>
+                    Live Traces
+                </button>
+            </div>
+
+            <div class="nav-group">
+                <div class="nav-label">Analysis</div>
+                <button class="nav-item" data-view="reliability" onclick="nav('reliability')">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 2l8 3.5v6c0 5-3.5 8.5-8 10.5-4.5-2-8-5.5-8-10.5v-6L12 2z" />
+                    </svg>
+                    Reliability Report
+                </button>
+                <button class="nav-item" data-view="regression" onclick="nav('regression')">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M3 17l6-6 4 4 8-8" />
+                        <path d="M15 7h6v6" />
+                    </svg>
+                    Regression
+                </button>
+            </div>
+
+            <div class="nav-group">
+                <div class="nav-label">AI</div>
+                <button class="nav-item" data-view="copilot" onclick="nav('copilot')">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="4" y="7" width="16" height="12" rx="3" />
+                        <path d="M9 12h.01M15 12h.01" />
+                        <path d="M12 7V3" />
+                        <circle cx="12" cy="2.5" r="0.6" fill="currentColor" />
+                    </svg>
+                    Copilot
+                </button>
+            </div>
+
+            <div class="nav-group">
+                <div class="nav-label">System</div>
+                <button class="nav-item" data-view="gate" onclick="nav('gate')">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="5" y="11" width="14" height="10" rx="2" />
+                        <path d="M8 11V7a4 4 0 0 1 8 0v4" />
+                    </svg>
+                    CI/CD Gate
+                </button>
+            </div>
+
+            <div class="sidebar-foot">
+                <div class="mini-agent">
+                    <div class="lbl">Active Agent</div>
+                    <div class="val" id="miniAgentName">No agent configured</div>
+                    <div class="sub" id="miniAgentVersion">—</div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- MAIN -->
+        <main class="main">
+            <div class="topbar">
+                <div>
+                    <div class="crumbs" id="crumbLabel">Overview</div>
+                    <h1 id="pageTitle">Dashboard</h1>
+                </div>
+                <div class="topbar-right">
+                    <div class="pill" id="scorePill" style="border-color:var(--border); color:var(--text-dim);">
+                        <span class="dot dot-low" id="scorePillDot" style="background:var(--text-faint);"></span>
+                        <span id="scorePillText">No evaluation yet</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="view-container">
+
+                <!-- DASHBOARD -->
+                <div class="view" id="view-dashboard">
+                    <section class="editorial-dashboard-hero">
+                        <div class="hero-copy">
+                            <div class="editorial-kicker">AGENTGUARD / RELIABILITY WORKSPACE</div>
+                            <h2>Make every agent decision <em>defensible.</em></h2>
+                            <p>Stress-test autonomous behavior, inspect tool execution and turn failures into safer
+                                deployment decisions.</p>
+                            <div class="hero-actions">
+                                <button class="btn btn-primary" onclick="nav('attacklab')">Open Attack Lab
+                                    <span>→</span></button>
+                                <button class="btn btn-ghost" onclick="nav('setup')">Configure Agent</button>
+                            </div>
+                        </div>
+                        <div class="hero-mark" aria-hidden="true">
+                            <div class="hero-orbit orbit-one"></div>
+                            <div class="hero-orbit orbit-two"></div>
+                            <div class="hero-orbit orbit-three"></div>
+                            <div class="hero-core">AG</div>
+                            <div class="hero-label">AI<br>GUARD</div>
+                        </div>
+                    </section>
+                    </section>
+
+                    <div class="grid grid-4" style="margin-bottom:22px;">
+                        <div class="stat-card accent-brand">
+                            <div class="stat-glow" style="background:var(--brand);"></div>
+                            <div class="lbl">Safety Score</div>
+                            <div class="num" id="dashScore">—</div>
+                            <div class="foot" id="dashScoreFoot">Run an evaluation to populate</div>
+                        </div>
+                        <div class="stat-card accent-neutral">
+                            <div class="lbl">Tests Run</div>
+                            <div class="num" id="dashTotal">0</div>
+                            <div class="foot">Adversarial scenarios executed</div>
+                        </div>
+                        <div class="stat-card accent-safe">
+                            <div class="lbl">Passed</div>
+                            <div class="num" id="dashPassed">0</div>
+                            <div class="foot">Handled safely</div>
+                        </div>
+                        <div class="stat-card accent-crit">
+                            <div class="lbl">Failed</div>
+                            <div class="num" id="dashFailed">0</div>
+                            <div class="foot">Require remediation</div>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-2">
+                        <div class="card">
+                            <div class="card-head">
+                                <div>
+                                    <div class="card-title">Failure Distribution</div>
+                                    <div class="card-sub">Breakdown by failure category</div>
+                                </div>
+                            </div>
+                            <div id="failureDist"></div>
+                        </div>
+
+                        <div class="card">
+                            <div class="card-head">
+                                <div>
+                                    <div class="card-title">Critical Vulnerabilities</div>
+                                    <div class="card-sub">Highest-severity issues detected</div>
+                                </div>
+                            </div>
+                            <div id="critVulns"></div>
+                        </div>
+                    </div>
+
+                    <div class="section-title"><span>Latest Evaluation</span><span class="line"></span></div>
+                    <div class="card" id="latestEvalCard"></div>
+                </div>
+
+                <!-- AGENT SETUP -->
+                <div class="view" id="view-setup">
+                    <div class="grid grid-2" style="align-items:start;">
+                        <div class="card">
+                            <div class="card-head">
+                                <div>
+                                    <div class="card-title">Agent Configuration</div>
+                                    <div class="card-sub">Describe the agent under test</div>
+                                </div>
+                            </div>
+
+                            <div class="field full">
+                                <label>Agent Name *</label>
+                                <input type="text" id="fAgentName" placeholder="e.g. Customer Support Agent"
+                                    value="Customer Support Agent">
+                            </div>
+                            <div class="field full">
+                                <label>Agent Description *</label>
+                                <textarea id="fAgentDesc"
+                                    placeholder="What does this agent do?">Handles customer orders, refunds and email correspondence for an e-commerce storefront.</textarea>
+                            </div>
+
+                            <div class="form-grid">
+                                <div class="field">
+                                    <label>Task Domain</label>
+                                    <select id="fDomain">
+                                        <option>E-commerce</option>
+                                        <option>Finance</option>
+                                        <option>Healthcare</option>
+                                        <option>Internal Ops</option>
+                                        <option>Developer Tools</option>
+                                        <option>General Assistant</option>
+                                    </select>
+                                </div>
+                                <div class="field">
+                                    <label>Version</label>
+                                    <input type="text" id="fVersion" value="v1.0.0">
+                                </div>
+                            </div>
+                            <div class="field full">
+                                <label>Primary Goal</label>
+                                <input type="text" id="fGoal"
+                                    placeholder="e.g. Resolve customer problems quickly and accurately"
+                                    value="Resolve customer problems quickly and accurately">
+                            </div>
+                            <div class="field full">
+                                <label>Custom Instructions <span
+                                        style="color:var(--text-faint); font-weight:400;">(optional)</span></label>
+                                <textarea id="fCustom"
+                                    placeholder="Any additional context, guardrails or system prompt notes"></textarea>
+                            </div>
+                        </div>
+
+                        <div class="card">
+                            <div class="card-head">
+                                <div>
+                                    <div class="card-title">Available Tools</div>
+                                    <div class="card-sub">Select the tools this agent can call</div>
+                                </div>
+                            </div>
+                            <div class="tool-grid" id="toolGrid"></div>
+                            <div class="add-tool-row">
+                                <input type="text" id="fNewTool" placeholder="add_custom_tool_name">
+                                <button class="btn btn-secondary btn-sm" onclick="addTool()">+ Add Tool</button>
+                            </div>
+
+                            <div style="margin-top:24px; padding-top:20px; border-top:1px solid var(--border-soft);">
+                                <button class="btn btn-primary btn-block" onclick="saveAgent()">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                                        <path d="M20 6L9 17l-5-5" />
+                                    </svg>
+                                    Save Agent & Continue to Attack Lab
+                                </button>
+                                <div id="setupSavedNote" class="helper-note"
+                                    style="display:none; margin-top:14px; margin-bottom:0;"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ATTACK LAB -->
+                <div class="view" id="view-attacklab">
+                    <div id="attackLabEmpty" class="empty-state">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+                            <circle cx="11" cy="11" r="7" />
+                            <path d="M21 21l-4.3-4.3" />
+                        </svg>
+                        <h3>No test suite generated yet</h3>
+                        <p>Configure an agent in Agent Setup, then generate an adversarial test suite tailored to its
+                            tools and goal.</p>
+                        <button class="btn btn-primary" onclick="nav('setup')">Go to Agent Setup</button>
+                    </div>
+
+                    <div id="attackLabContent" style="display:none;">
+                        <div class="card"
+                            style="margin-bottom:20px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:14px;">
+                            <div>
+                                <div class="card-title" style="margin-bottom:4px;">Scenario Generation Engine</div>
+                                <div class="card-sub" id="attackLabSub">10 adversarial attacks generated for this agent
+                                </div>
+                            </div>
+                            <div style="display:flex; gap:10px;">
+                                <button class="btn btn-secondary" onclick="generateTests()">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M23 4v6h-6M1 20v-6h6" />
+                                        <path d="M3.5 9a9 9 0 0114.6-3.4L23 10M1 14l4.9 4.4A9 9 0 0020.5 15" />
+                                    </svg>
+                                    Regenerate
+                                </button>
+                                <button class="btn btn-primary" onclick="runEvaluation()" id="runEvalBtn">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M5 3l14 9-14 9V3z" />
+                                    </svg>
+                                    Run Evaluation
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="filter-row" id="filterRow"></div>
+                        <div class="attack-grid" id="attackGrid"></div>
+                    </div>
+
+                    <!-- Evaluation pipeline modal -->
+                    <div class="modal-overlay" id="pipelineOverlay">
+                        <div class="modal" style="max-width:480px;">
+                            <div class="modal-head">
+                                <div>
+                                    <div class="crumbs" style="margin-bottom:6px;">Evaluation Pipeline</div>
+                                    <h3>Running Safety Evaluation</h3>
+                                </div>
+                            </div>
+                            <div class="modal-body">
+                                <div class="pipeline" id="pipelineSteps"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- LIVE TRACES -->
+                <div class="view" id="view-traces">
+                    <div id="tracesEmpty" class="empty-state">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+                            <path d="M3 12h4l2-7 4 14 2-7h6" />
+                        </svg>
+                        <h3>No execution traces yet</h3>
+                        <p>Run an evaluation from the Attack Lab to capture sandboxed execution traces for every test.
+                        </p>
+                        <button class="btn btn-primary" onclick="nav('attacklab')">Go to Attack Lab</button>
+                    </div>
+                    <div id="tracesContent" style="display:none;" class="trace-layout">
+                        <div class="card" style="padding:14px;">
+                            <div class="card-title" style="margin-bottom:12px; padding:0 4px;">Test Cases</div>
+                            <div id="traceList"></div>
+                        </div>
+                        <div class="card" id="traceDetailCard"></div>
+                    </div>
+                </div>
+
+                <!-- RELIABILITY REPORT -->
+                <div class="view" id="view-reliability">
+                    <div id="reliabilityEmpty" class="empty-state">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+                            <path d="M12 2l8 3.5v6c0 5-3.5 8.5-8 10.5-4.5-2-8-5.5-8-10.5v-6L12 2z" />
+                        </svg>
+                        <h3>No reliability report yet</h3>
+                        <p>Run an evaluation to generate a full reliability scorecard with failure breakdowns and
+                            remediation guidance.</p>
+                        <button class="btn btn-primary" onclick="nav('attacklab')">Go to Attack Lab</button>
+                    </div>
+                    <div id="reliabilityContent" style="display:none;">
+                        <div class="grid grid-2" style="margin-bottom:20px; align-items:stretch;">
+                            <div class="card" style="display:flex; align-items:center; justify-content:center;">
+                                <div class="gauge-wrap">
+                                    <svg width="180" height="180" viewBox="0 0 180 180" id="gaugeSvg"></svg>
+                                    <div class="gauge-verdict" id="gaugeVerdict"></div>
+                                </div>
+                            </div>
+                            <div class="card">
+                                <div class="card-title" style="margin-bottom:16px;">Test Summary</div>
+                                <div id="reliabilitySummary"></div>
+                            </div>
+                        </div>
+                        <div class="section-title"><span>Failure Categories</span><span class="line"></span></div>
+                        <div class="card" style="margin-bottom:24px;">
+                            <div id="failureCategories"></div>
+                        </div>
+                        <div class="section-title"><span>Detected Failures</span><span class="line"></span></div>
+                        <div id="failureList"></div>
+                    </div>
+                </div>
+
+                <!-- REGRESSION -->
+                <div class="view" id="view-regression">
+                    <div class="card" style="margin-bottom:20px;">
+                        <div class="card-head">
+                            <div>
+                                <div class="card-title">Reliability History</div>
+                                <div class="card-sub">Safety score across evaluated versions</div>
+                            </div>
+                            <button class="btn btn-secondary btn-sm" onclick="saveVersion()" id="saveVersionBtn"
+                                disabled>
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M12 5v14M5 12h14" />
+                                </svg>
+                                Save Current as Version
+                            </button>
+                        </div>
+                        <div id="regressionChartWrap"></div>
+                    </div>
+                    <div class="card">
+                        <div class="card-title" style="margin-bottom:4px;">Version Log</div>
+                        <div class="card-sub" style="margin-bottom:4px;">Every saved evaluation snapshot</div>
+                        <table class="reg-table">
+                            <thead>
+                                <tr>
+                                    <th>Version</th>
+                                    <th>Score</th>
+                                    <th>Passed</th>
+                                    <th>Failed</th>
+                                    <th>Δ vs Prev</th>
+                                </tr>
+                            </thead>
+                            <tbody id="regressionTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- COPILOT -->
+                <div class="view" id="view-copilot">
+                    <div class="copilot-layout">
+                        <div class="chat-panel">
+                            <div class="chat-log" id="chatLog"></div>
+                            <div class="chat-input-row">
+                                <input type="text" id="chatInput" placeholder="Ask about this evaluation…"
+                                    onkeydown="if(event.key==='Enter')sendChat()">
+                                <button class="btn btn-primary btn-sm" onclick="sendChat()">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                                        <path d="M22 2L11 13" />
+                                        <path d="M22 2l-7 20-4-9-9-4 20-7z" />
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="suggest-panel">
+                            <h4>Suggested Questions</h4>
+                            <div id="suggestQuestions"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- CI/CD GATE -->
+                <div class="view" id="view-gate">
+                    <div class="card" style="margin-bottom:20px;">
+                        <div class="card-title" style="margin-bottom:14px;">Deployment Threshold</div>
+                        <div class="threshold-row">
+                            <span style="font-size:12px; color:var(--text-faint); font-family:var(--font-mono);">MIN
+                                SCORE</span>
+                            <input type="range" min="0" max="100" value="85" id="thresholdSlider"
+                                oninput="updateThreshold()">
+                            <span class="threshold-val" id="thresholdVal">85</span>
+                        </div>
+                        <div class="hint" style="margin-top:10px;">Agents scoring below this threshold are blocked from
+                            deployment automatically — functioning as continuous integration for autonomous agents.
+                        </div>
+                    </div>
+                    <div class="gate-banner" id="gateBanner">
+                        <div class="gate-status" id="gateStatusText">NO EVALUATION</div>
+                        <div class="gate-reason" id="gateReasonText">Run an evaluation to check deployment eligibility.
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </main>
+    </div>
+
+    <!-- FAILURE DETAIL MODAL -->
+    <div class="modal-overlay" id="failureModalOverlay" onclick="if(event.target===this)closeFailureModal()">
+        <div class="modal">
+            <div class="modal-head">
+                <div>
+                    <span class="badge badge-critical" id="fmSeverityBadge">CRITICAL</span>
+                    <h3 id="fmTitle">Failure title</h3>
+                </div>
+                <button class="modal-close" onclick="closeFailureModal()">✕</button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-row">
+                    <div class="k">Test</div>
+                    <div class="v" id="fmTest"></div>
+                </div>
+                <div class="mb-row">
+                    <div class="k">Expected Behavior</div>
+                    <div class="v" id="fmExpected"></div>
+                </div>
+                <div class="mb-row">
+                    <div class="k">Actual Behavior</div>
+                    <div class="v" id="fmActual"></div>
+                </div>
+                <div class="mb-row">
+                    <div class="k">Severity <span id="fmSeverityNum"
+                            style="color:var(--text-dim); font-family:var(--font-mono); text-transform:none;"></span>
+                    </div>
+                    <div class="sev-bar-track">
+                        <div class="sev-bar-fill" id="fmSevBar"></div>
+                    </div>
+                </div>
+                <div class="mb-row">
+                    <div class="k">Why It Failed</div>
+                    <div class="v" id="fmWhy"></div>
+                </div>
+                <div class="mb-row">
+                    <div class="k">Recommendation</div>
+                    <div class="v" id="fmRec"></div>
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" style="flex:1;" onclick="viewTraceFromModal()">View Trace</button>
+                <button class="btn btn-primary" style="flex:1;" onclick="askCopilotFromModal()">Ask AI Copilot</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+
+</html>
