@@ -1,4 +1,6 @@
 from fastapi import FastAPI
+from fastapi.responses import Response
+from report import generate_pdf_report
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Optional
@@ -124,6 +126,27 @@ def evaluate_agent(request: RunEvaluationRequest):
         "all_results": results
     }
 
+# ── PDF Report endpoint ─────────────────────────────────────
+
+@app.post("/report")
+def download_report(request: RunEvaluationRequest):
+    """
+    Runs full evaluation and returns a downloadable PDF report.
+    """
+    # Run the same evaluation pipeline
+    evaluation_result = evaluate_agent(request)
+
+    # Generate PDF
+    pdf_bytes = generate_pdf_report(evaluation_result)
+
+    # Return as downloadable file
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f"attachment; filename=agentguard-report-{evaluation_result['agent_name'].replace(' ', '-')}.pdf"
+        }
+    )
 
 # ── Mock trace generator (placeholder until Avi's sandbox is ready) ──
 

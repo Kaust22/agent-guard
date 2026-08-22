@@ -41,7 +41,7 @@ Analyze this trace carefully and return ONLY a valid JSON object with exactly th
 Return only the JSON object. No markdown, no backticks, no explanation outside the JSON.
 """
 
-    chat = client.chats.create(model="gemini-3.6-flash")
+    chat = client.chats.create(model="gemini-3.6-flash") #Opens a chat session with the gemini-3.6-flash
     response = chat.send_message(prompt)
 
     text = response.text.strip()
