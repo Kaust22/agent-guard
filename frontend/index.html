@@ -379,37 +379,49 @@
                 </div>
 
                 <!-- RELIABILITY REPORT -->
-                <div class="view" id="view-reliability">
-                    <div id="reliabilityEmpty" class="empty-state">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
-                            <path d="M12 2l8 3.5v6c0 5-3.5 8.5-8 10.5-4.5-2-8-5.5-8-10.5v-6L12 2z" />
-                        </svg>
-                        <h3>No reliability report yet</h3>
-                        <p>Run an evaluation to generate a full reliability scorecard with failure breakdowns and
-                            remediation guidance.</p>
-                        <button class="btn btn-primary" onclick="nav('attacklab')">Go to Attack Lab</button>
-                    </div>
-                    <div id="reliabilityContent" style="display:none;">
-                        <div class="grid grid-2" style="margin-bottom:20px; align-items:stretch;">
-                            <div class="card" style="display:flex; align-items:center; justify-content:center;">
-                                <div class="gauge-wrap">
-                                    <svg width="180" height="180" viewBox="0 0 180 180" id="gaugeSvg"></svg>
-                                    <div class="gauge-verdict" id="gaugeVerdict"></div>
-                                </div>
-                            </div>
-                            <div class="card">
-                                <div class="card-title" style="margin-bottom:16px;">Test Summary</div>
-                                <div id="reliabilitySummary"></div>
-                            </div>
-                        </div>
-                        <div class="section-title"><span>Failure Categories</span><span class="line"></span></div>
-                        <div class="card" style="margin-bottom:24px;">
-                            <div id="failureCategories"></div>
-                        </div>
-                        <div class="section-title"><span>Detected Failures</span><span class="line"></span></div>
-                        <div id="failureList"></div>
-                    </div>
+<div class="view" id="view-reliability">
+    <div id="reliabilityEmpty" class="empty-state">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+            <path d="M12 2l8 3.5v6c0 5-3.5 8.5-8 10.5-4.5-2-8-5.5-8-10.5v-6L12 2z" />
+        </svg>
+        <h3>No reliability report yet</h3>
+        <p>Run an evaluation to generate a full reliability scorecard with failure breakdowns and remediation guidance.</p>
+        <button class="btn btn-primary" onclick="nav('attacklab')">Go to Attack Lab</button>
+    </div>
+    
+    <div id="reliabilityContent" style="display:none;">
+        <!-- DOWNLOAD BUTTON -->
+        <div style="display:flex; justify-content:flex-end; margin-bottom:16px;">
+            <button class="btn btn-primary" onclick="downloadReport(event)">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px; height:16px; margin-right:6px;">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                    <polyline points="7 10 12 15 17 10"/>
+                    <line x1="12" y1="15" x2="12" y2="3"/>
+                </svg>
+                Download PDF Report
+            </button>
+        </div>
+
+        <div class="grid grid-2" style="margin-bottom:20px; align-items:stretch;">
+            <div class="card" style="display:flex; align-items:center; justify-content:center;">
+                <div class="gauge-wrap">
+                    <svg width="180" height="180" viewBox="0 0 180 180" id="gaugeSvg"></svg>
+                    <div class="gauge-verdict" id="gaugeVerdict"></div>
                 </div>
+            </div>
+            <div class="card">
+                <div class="card-title" style="margin-bottom:16px;">Test Summary</div>
+                <div id="reliabilitySummary"></div>
+            </div>
+        </div>
+        <div class="section-title"><span>Failure Categories</span><span class="line"></span></div>
+        <div class="card" style="margin-bottom:24px;">
+            <div id="failureCategories"></div>
+        </div>
+        <div class="section-title"><span>Detected Failures</span><span class="line"></span></div>
+        <div id="failureList"></div>
+    </div>
+</div>
 
                 <!-- REGRESSION -->
                 <div class="view" id="view-regression">

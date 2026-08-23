@@ -1817,7 +1817,9 @@ body {
 
 .sidebar {
     position: relative;
-    overflow: hidden;
+    overflow-y: auto;
+    overflow-x: hidden;
+    height: 100vh;
     background:
         radial-gradient(500px 420px at 70% 90%, rgba(115, 92, 255, .11), transparent 60%),
         linear-gradient(160deg, var(--navy), #0b1512);
