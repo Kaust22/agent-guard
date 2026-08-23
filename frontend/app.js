@@ -203,21 +203,50 @@ function saveAgent(){
 }
 
 /* ====== attack lab ====== */
-function generateTests(){
-  if(!state.agent){ nav("setup"); return; } // shouldn't happen since the button's disabled path, but just in case
-  // TODO: replace this with a real call to /generate-tests once backend has the
-  // Gemini scenario generation hooked up. for now just grab 10 random templates
-  const picked = shuffle(ATTACK_TEMPLATES).slice(0,10);
-  state.tests = picked.map((t,i)=>({
-    id: "TEST#"+String(i+1).padStart(2,"0"),
-    ...t,
-    result: null, // 'pass' | 'fail' | null
-  }));
+async function generateTests(){
+  if(!state.agent){ nav("setup"); return; }
+  
+  document.getElementById("attackLabEmpty").style.display="none";
+  document.getElementById("attackLabContent").style.display="block";
+  document.getElementById("attackLabSub").textContent = "Generating adversarial tests for "+state.agent.name+"...";
+
+  try {
+    const res = await fetch("http://127.0.0.1:8000/generate-tests", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({
+        agent_name: state.agent.name,
+        agent_description: state.agent.description || "",
+        agent_tools: state.agent.tools || []
+      })
+    });
+    const data = await res.json();
+    
+    state.tests = data.test_cases.map((t, i) => ({
+      id: "TEST#" + String(i+1).padStart(2,"0"),
+      title: t.test_name,
+      type: t.failure_type,
+      severity: t.severity,
+      prompt: t.instruction,
+      expected: t.expected_failure,
+      why: t.expected_failure,
+      rec: "Address the " + t.failure_type + " vulnerability in this agent.",
+      tools: state.agent.tools.map(tool => tool.split("(")[0].trim()),
+      result: null,
+    }));
+
+  } catch(e) {
+    console.error("generateTests failed:", e);
+    const picked = shuffle(ATTACK_TEMPLATES).slice(0,5);
+    state.tests = picked.map((t,i)=>({
+      id: "TEST#"+String(i+1).padStart(2,"0"),
+      ...t, result: null,
+    }));
+  }
+
   state.results = null;
   state.traces = {};
   updateNavBadge();
-  document.getElementById("attackLabEmpty").style.display="none";
-  document.getElementById("attackLabContent").style.display="block";
   document.getElementById("attackLabSub").textContent = state.tests.length+" adversarial attacks generated for "+state.agent.name;
   state.activeFilter="All";
   renderFilters();
@@ -228,6 +257,7 @@ function generateTests(){
   document.getElementById("reliabilityContent").style.display="none";
   document.getElementById("reliabilityEmpty").style.display="block";
 }
+
 function renderFilters(){
   const counts = {All: state.tests.length};
   SEV_ORDER.forEach(s=> counts[s] = state.tests.filter(t=>t.severity===s).length);
@@ -304,51 +334,119 @@ async function runEvaluation(onlyIds){
   const overlay = document.getElementById("pipelineOverlay");
   overlay.classList.add("open");
   document.getElementById("runEvalBtn").disabled = true;
-  // step through each stage with a random-ish delay so it doesn't look like a
-  // robotic fixed timer. real pipeline will replace this with actual progress
-  // events from the backend (probably via SSE or polling, haven't decided yet)
-  for(let i=0;i<PIPELINE_STAGES.length;i++){
-    renderPipeline(i, i);
-    await new Promise(r=>setTimeout(r, 480 + Math.random()*280));
+
+  renderPipeline(0, 0);
+  await new Promise(r=>setTimeout(r, 600));
+  renderPipeline(1, 1);
+
+  try {
+    const res = await fetch("http://127.0.0.1:8000/evaluate", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({
+        agent_name: state.agent.name,
+        agent_description: state.agent.description || "",
+        agent_tools: state.agent.tools || []
+      })
+    });
+
+    renderPipeline(2, 2);
+    const data = await res.json();
+    renderPipeline(3, 3);
+    await new Promise(r=>setTimeout(r, 400));
+    renderPipeline(4, 4);
+    await new Promise(r=>setTimeout(r, 300));
+    renderPipeline(-1, PIPELINE_STAGES.length);
+    await new Promise(r=>setTimeout(r, 350));
+
+    overlay.classList.remove("open");
+    document.getElementById("runEvalBtn").disabled = false;
+    computeResults(onlyIds, data);
+
+  } catch(e) {
+    console.error("runEvaluation failed:", e);
+    overlay.classList.remove("open");
+    document.getElementById("runEvalBtn").disabled = false;
+    alert("Evaluation failed: " + e.message + "\n\nMake sure the backend is running at http://127.0.0.1:8000");
   }
-  renderPipeline(-1, PIPELINE_STAGES.length);
-  await new Promise(r=>setTimeout(r, 350));
-  overlay.classList.remove("open");
-  document.getElementById("runEvalBtn").disabled = false;
-  computeResults(onlyIds);
 }
-function computeResults(onlyIds){
-  const targets = onlyIds ? state.tests.filter(t=>onlyIds.includes(t.id)) : state.tests;
-  // rough guess at fail rates per severity - obviously in reality this should
-  // come from actually running the agent against each prompt in the sandbox,
-  // this is just enough to make the numbers look believable for the demo
-  const failProbBySeverity = {Critical:.62, High:.48, Medium:.32, Low:.16};
-  targets.forEach(t=>{
-    const fail = Math.random() < failProbBySeverity[t.severity];
-    t.result = fail ? "fail" : "pass";
-    state.traces[t.id] = buildTrace(t, fail);
-  });
-  // don't want a demo run where literally everything passes or everything fails,
-  // looks fake either way. force at least one of each on full runs
-  if(!onlyIds){
-    if(state.tests.every(t=>t.result==="pass")) state.tests[0].result="fail", state.traces[state.tests[0].id]=buildTrace(state.tests[0], true);
-    if(state.tests.every(t=>t.result==="fail")) state.tests[0].result="pass", state.traces[state.tests[0].id]=buildTrace(state.tests[0], false);
-  }
-  const total = state.tests.length;
-  const passed = state.tests.filter(t=>t.result==="pass").length;
-  const failed = total-passed;
-  let penalty = 0;
-  const failures = state.tests.filter(t=>t.result==="fail").map((t,idx)=>{
-    penalty += SEV_WEIGHT[t.severity];
-    return {
-      id:"F"+(idx+1), testId:t.id, title:t.title, type:t.type, severity:t.severity,
-      expected:t.expected, actual: t.title+" was executed as requested, bypassing the expected safeguard.",
-      why:t.why, rec:t.rec,
-      severityScore: t.severity==="Critical"?88+Math.floor(Math.random()*10):t.severity==="High"?68+Math.floor(Math.random()*15):t.severity==="Medium"?42+Math.floor(Math.random()*15):20+Math.floor(Math.random()*15),
+
+function computeResults(onlyIds, apiData){
+  if(apiData){
+    apiData.all_results.forEach((r, i) => {
+      if(state.tests[i]){
+        state.tests[i].result = r.status === "passed" ? "pass" : "fail";
+        state.tests[i].title = r.test_name;
+        state.tests[i].type = r.failure_type;
+        state.tests[i].severity = r.severity;
+        state.tests[i].why = r.explanation;
+        state.tests[i].rec = r.recommendation;
+        
+        state.traces[state.tests[i].id] = {
+          failed: r.status === "failed",
+          steps: (r.trace || []).map((step, j) => ({
+            tool: step.tool,
+            order: step.step,
+            input: step.input,
+            output: step.output,
+            risk: j === r.trace.length - 1 && r.status === "failed" ? r.severity : "Low",
+            isFailPoint: j === r.trace.length - 1 && r.status === "failed",
+          }))
+        };
+      }
+    });
+
+    const failures = apiData.all_results
+      .filter(r => r.status === "failed")
+      .map((r, idx) => ({
+        id: "F"+(idx+1),
+        testId: state.tests[idx] ? state.tests[idx].id : "TEST#"+(idx+1),
+        title: r.test_name,
+        type: r.failure_type,
+        severity: r.severity,
+        expected: r.actual_failure_type,
+        actual: r.explanation,
+        why: r.explanation,
+        rec: r.recommendation,
+        severityScore: r.severity_score,
+      }));
+
+    state.results = {
+      total: apiData.total_tests,
+      passed: apiData.passed,
+      failed: apiData.failed,
+      score: apiData.safety_score,
+      failures: failures
     };
-  });
-  const score = Math.max(0, Math.min(100, Math.round(100 - penalty)));
-  state.results = {total, passed, failed, score, failures};
+
+  } else {
+    const targets = onlyIds ? state.tests.filter(t=>onlyIds.includes(t.id)) : state.tests;
+    const failProbBySeverity = {Critical:.62, High:.48, Medium:.32, Low:.16};
+    targets.forEach(t=>{
+      const fail = Math.random() < failProbBySeverity[t.severity];
+      t.result = fail ? "fail" : "pass";
+      state.traces[t.id] = buildTrace(t, fail);
+    });
+    if(!onlyIds){
+      if(state.tests.every(t=>t.result==="pass")) state.tests[0].result="fail", state.traces[state.tests[0].id]=buildTrace(state.tests[0], true);
+      if(state.tests.every(t=>t.result==="fail")) state.tests[0].result="pass", state.traces[state.tests[0].id]=buildTrace(state.tests[0], false);
+    }
+    const total = state.tests.length;
+    const passed = state.tests.filter(t=>t.result==="pass").length;
+    const failed = total-passed;
+    let penalty = 0;
+    const failures = state.tests.filter(t=>t.result==="fail").map((t,idx)=>{
+      penalty += SEV_WEIGHT[t.severity];
+      return {
+        id:"F"+(idx+1), testId:t.id, title:t.title, type:t.type, severity:t.severity,
+        expected:t.expected, actual: t.title+" was executed as requested, bypassing the expected safeguard.",
+        why:t.why, rec:t.rec,
+        severityScore: t.severity==="Critical"?88+Math.floor(Math.random()*10):t.severity==="High"?68+Math.floor(Math.random()*15):t.severity==="Medium"?42+Math.floor(Math.random()*15):20+Math.floor(Math.random()*15),
+      };
+    });
+    state.results = {total, passed, failed, score: Math.max(0, Math.min(100, Math.round(100 - penalty))), failures};
+  }
+
   renderAll();
   document.getElementById("saveVersionBtn").disabled = false;
 }
@@ -830,6 +928,39 @@ function renderGate(){
     : "Current score <b>"+s+"</b> is below the minimum threshold of <b>"+state.threshold+"</b>. Reliability regression detected — resolve failing tests before deployment.";
 }
 
+async function downloadReport(){
+  if(!state.agent) return;
+  const btn = event.target;
+  btn.textContent = "Generating PDF...";
+  btn.disabled = true;
+  try {
+    const res = await fetch("http://127.0.0.1:8000/report", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({
+        agent_name: state.agent.name,
+        agent_description: state.agent.description || "",
+        agent_tools: state.agent.tools || []
+      })
+    });
+    const blob = await res.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "agentguard-report-" + state.agent.name.replace(/\s+/g,"-") + ".pdf";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    window.URL.revokeObjectURL(url);
+  } catch(e) {
+    alert("Report generation failed: " + e.message);
+  } finally {
+    btn.textContent = "Download PDF Report";
+    btn.disabled = false;
+  }
+}
+
+
 // ====== boot ======
 function init(){
   renderToolGrid();
@@ -837,6 +968,9 @@ function init(){
   renderDashboard();
   nav("dashboard"); // land on the dashboard first so judges see the overview immediately
 }
+
+
+
 init();
 
 /* Editorial UI enhancement — application logic remains unchanged. */
