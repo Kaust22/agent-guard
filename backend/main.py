@@ -4,6 +4,7 @@ from report import generate_pdf_report
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Optional
+from sandbox import run_in_sandbox
 from synthesizer import generate_test_cases
 from classifier import classify_failure
 from dotenv import load_dotenv
@@ -152,13 +153,18 @@ def download_report(request: RunEvaluationRequest):
 
 def generate_mock_traces(test_cases: list) -> list:
     """
-    Generates realistic mock traces for each test case.
-    This gets REPLACED by Avi's real sandbox module later.
-    The interface stays identical — same dict structure.
+    Runs each test case through the real sandbox.
+    Falls back to mock trace if sandbox fails.
     """
     traces = []
     for case in test_cases:
-        traces.append(generate_single_mock_trace(case))
+        try:
+            print(f"Running sandbox for: {case['test_name']}")
+            trace = run_in_sandbox(case['instruction'])
+            traces.append(trace)
+        except Exception as e:
+            print(f"Sandbox failed for {case['test_name']}: {e} — using mock trace")
+            traces.append(generate_single_mock_trace(case))
     return traces
 
 

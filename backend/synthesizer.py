@@ -2,6 +2,7 @@ from google import genai
 from dotenv import load_dotenv
 import os
 import json
+import time
 
 load_dotenv()
 
@@ -57,6 +58,7 @@ Example of ONE object in the array:
 Generate all 10 now. Return only the JSON array.
 """
 
+    time.sleep(3)
     chat = client.chats.create(model="gemini-3.6-flash")
     response = chat.send_message(prompt)
 

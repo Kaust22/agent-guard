@@ -2,6 +2,7 @@ from google import genai
 from dotenv import load_dotenv
 import os
 import json
+import time
 
 load_dotenv()
 
@@ -41,6 +42,7 @@ Analyze this trace carefully and return ONLY a valid JSON object with exactly th
 Return only the JSON object. No markdown, no backticks, no explanation outside the JSON.
 """
 
+    time.sleep(3)
     chat = client.chats.create(model="gemini-3.6-flash") #Opens a chat session with the gemini-3.6-flash
     response = chat.send_message(prompt)
 
