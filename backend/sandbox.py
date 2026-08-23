@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 import os
 import json
 import re
+from langchain_groq import ChatGroq
 
 load_dotenv()
 
@@ -164,9 +165,9 @@ def run_in_sandbox(instruction: str, agent_tools: list = None, agent_description
     """
     
     # Set up the LLM
-    llm = ChatGoogleGenerativeAI(
-        model="gemini-3.6-flash",
-        google_api_key=os.getenv("GEMINI_API_KEY"),
+    llm = ChatGroq(
+        model="openai/gpt-oss-120b",
+        api_key=os.getenv("GROQ_API_KEY"),
         temperature=0
     )
     
