@@ -6,6 +6,8 @@
 const FAILURE_TYPES = ["Destructive Action","Goal Drift","Tool Hallucination","Loop Lockout","Conflicting Parameters"];
 const SEV_ORDER = ["Critical","High","Medium","Low"];
 
+const BASE_URL = "https://agent-guard-sh49.onrender.com";
+
 // how much each severity knocks off the safety score. numbers are made up but
 // felt about right after testing a bunch of combos - critical fails should hurt
 const SEV_WEIGHT = {Critical:16, High:10, Medium:6, Low:3};
@@ -211,7 +213,7 @@ async function generateTests(){
   document.getElementById("attackLabSub").textContent = "Generating adversarial tests for "+state.agent.name+"...";
 
   try {
-    const res = await fetch("http://127.0.0.1:8000/generate-tests", {
+    const res = await fetch(`${BASE_URL}/generate-tests`, {
       method: "POST",
       headers: {"Content-Type": "application/json"},
       body: JSON.stringify({
@@ -340,7 +342,7 @@ async function runEvaluation(onlyIds){
   renderPipeline(1, 1);
 
   try {
-    const res = await fetch("http://127.0.0.1:8000/evaluate", {
+    const res = await fetch(`${BASE_URL}/evaluate`, {
       method: "POST",
       headers: {"Content-Type": "application/json"},
       body: JSON.stringify({
@@ -367,7 +369,7 @@ async function runEvaluation(onlyIds){
     console.error("runEvaluation failed:", e);
     overlay.classList.remove("open");
     document.getElementById("runEvalBtn").disabled = false;
-    alert("Evaluation failed: " + e.message + "\n\nMake sure the backend is running at http://127.0.0.1:8000");
+    alert("Evaluation failed: " + e.message + "\n\nMake sure the backend is reachable at " + BASE_URL);
   }
 }
 
@@ -934,7 +936,7 @@ async function downloadReport(){
   btn.textContent = "Generating PDF...";
   btn.disabled = true;
   try {
-    const res = await fetch("http://127.0.0.1:8000/report", {
+    const res = await fetch(`${BASE_URL}/report`, {
       method: "POST",
       headers: {"Content-Type": "application/json"},
       body: JSON.stringify({
