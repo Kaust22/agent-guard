@@ -9,6 +9,7 @@ from synthesizer import generate_test_cases
 from classifier import classify_failure
 from dotenv import load_dotenv
 import os
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 load_dotenv()
 
@@ -60,14 +61,15 @@ def generate_tests(agent: AgentDefinition):
 
 # ── Full evaluation ─────────────────────────────────────────
 
+
 @app.post("/evaluate")
 def evaluate_agent(request: RunEvaluationRequest):
     """
-    Full pipeline:
+    Full pipeline with parallel execution:
     1. Generate test cases (Module 1)
-    2. Run sandbox — uses provided traces or mock traces if Avi's module not ready (Module 2)
-    3. Classify each result (Module 3)
-    4. Return full reliability report for dashboard (Module 4)
+    2. Run all sandboxes in parallel (Module 2)
+    3. Classify all results in parallel (Module 3)
+    4. Return full reliability report (Module 4)
     """
 
     # Step 1: Generate test cases
@@ -76,45 +78,67 @@ def evaluate_agent(request: RunEvaluationRequest):
         request.agent_tools
     )
 
-    # Step 2: Get traces
-    # If Avi's sandbox module is connected, use real traces
-    # Otherwise use mock traces so the rest of the pipeline works
+    # Step 2: Run all sandboxes in parallel
     if request.traces:
         traces = request.traces
     else:
-        traces = generate_mock_traces(test_cases)
+        traces = [None] * len(test_cases)
+        with ThreadPoolExecutor(max_workers=5) as executor:
+            future_to_index = {
+                executor.submit(run_sandbox_for_case, test_cases[i]): i
+                for i in range(len(test_cases))
+            }
+            for future in as_completed(future_to_index):
+                index = future_to_index[future]
+                try:
+                    traces[index] = future.result()
+                except Exception as e:
+                    print(f"Sandbox failed for test {index}: {e}")
+                    traces[index] = generate_single_mock_trace(test_cases[index])
 
-    # Step 3: Classify each test case
-    results = []
-    passed_count = 0
-    total_severity = 0
+    # Step 3: Classify all results in parallel
+    results = [None] * len(test_cases)
+    with ThreadPoolExecutor(max_workers=5) as executor:
+        future_to_index = {
+            executor.submit(classify_failure, test_cases[i], traces[i]): i
+            for i in range(len(test_cases))
+        }
+        for future in as_completed(future_to_index):
+            index = future_to_index[future]
+            try:
+                classification = future.result()
+            except Exception as e:
+                print(f"Classification failed for test {index}: {e}")
+                classification = {
+                    "passed": False,
+                    "failure_confirmed": False,
+                    "actual_failure_type": "Classification error",
+                    "severity_score": 50,
+                    "explanation": "Classification failed due to API error.",
+                    "recommendation": "Retry the evaluation."
+                }
 
-    for i, test_case in enumerate(test_cases):
-        trace = traces[i] if i < len(traces) else generate_single_mock_trace(test_case)
-        classification = classify_failure(test_case, trace)
+            test_case = test_cases[index]
+            trace = traces[index]
+            results[index] = {
+                "test_id": test_case["test_id"],
+                "test_name": test_case["test_name"],
+                "failure_type": test_case["failure_type"],
+                "severity": test_case["severity"],
+                "status": "passed" if classification["passed"] else "failed",
+                "failure_confirmed": classification["failure_confirmed"],
+                "actual_failure_type": classification["actual_failure_type"],
+                "severity_score": classification["severity_score"],
+                "explanation": classification["explanation"],
+                "recommendation": classification["recommendation"],
+                "trace": trace["tool_calls"]
+            }
 
-        if classification["passed"]:
-            passed_count += 1
-
-        total_severity += classification["severity_score"]
-
-        results.append({
-            "test_id": test_case["test_id"],
-            "test_name": test_case["test_name"],
-            "failure_type": test_case["failure_type"],
-            "severity": test_case["severity"],
-            "status": "passed" if classification["passed"] else "failed",
-            "failure_confirmed": classification["failure_confirmed"],
-            "actual_failure_type": classification["actual_failure_type"],
-            "severity_score": classification["severity_score"],
-            "explanation": classification["explanation"],
-            "recommendation": classification["recommendation"],
-            "trace": trace["tool_calls"]
-        })
-
-    failed_count = len(test_cases) - passed_count
-    # Safety score: starts at 100, drops based on average severity of failures
-    avg_severity = total_severity / len(test_cases) if test_cases else 0
+    # Step 4: Calculate scores
+    passed_count = sum(1 for r in results if r["status"] == "passed")
+    failed_count = len(results) - passed_count
+    total_severity = sum(r["severity_score"] for r in results)
+    avg_severity = total_severity / len(results) if results else 0
     safety_score = max(0, int(100 - avg_severity))
 
     return {
@@ -127,20 +151,22 @@ def evaluate_agent(request: RunEvaluationRequest):
         "all_results": results
     }
 
+
+def run_sandbox_for_case(test_case: dict) -> dict:
+    """Wrapper for parallel sandbox execution."""
+    print(f"Running sandbox for: {test_case['test_name']}")
+    try:
+        return run_in_sandbox(test_case['instruction'])
+    except Exception as e:
+        print(f"Sandbox error: {e} — using mock trace")
+        return generate_single_mock_trace(test_case)
 # ── PDF Report endpoint ─────────────────────────────────────
 
 @app.post("/report")
 def download_report(request: RunEvaluationRequest):
-    """
-    Runs full evaluation and returns a downloadable PDF report.
-    """
-    # Run the same evaluation pipeline
+    """Runs full evaluation and returns downloadable PDF."""
     evaluation_result = evaluate_agent(request)
-
-    # Generate PDF
     pdf_bytes = generate_pdf_report(evaluation_result)
-
-    # Return as downloadable file
     return Response(
         content=pdf_bytes,
         media_type="application/pdf",
