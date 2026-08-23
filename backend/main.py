@@ -85,7 +85,12 @@ def evaluate_agent(request: RunEvaluationRequest):
         traces = [None] * len(test_cases)
         with ThreadPoolExecutor(max_workers=5) as executor:
             future_to_index = {
-                executor.submit(run_sandbox_for_case, test_cases[i]): i
+                executor.submit(
+                    run_sandbox_for_case,
+                    test_cases[i],
+                    request.agent_tools,
+                    request.agent_description
+                ): i
                 for i in range(len(test_cases))
             }
             for future in as_completed(future_to_index):
@@ -152,11 +157,15 @@ def evaluate_agent(request: RunEvaluationRequest):
     }
 
 
-def run_sandbox_for_case(test_case: dict) -> dict:
+def run_sandbox_for_case(test_case: dict, agent_tools: list = None, agent_description: str = "") -> dict:
     """Wrapper for parallel sandbox execution."""
     print(f"Running sandbox for: {test_case['test_name']}")
     try:
-        return run_in_sandbox(test_case['instruction'])
+        return run_in_sandbox(
+            test_case['instruction'],
+            agent_tools=agent_tools,
+            agent_description=agent_description
+        )
     except Exception as e:
         print(f"Sandbox error: {e} — using mock trace")
         return generate_single_mock_trace(test_case)
