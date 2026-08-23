@@ -6,6 +6,18 @@
 
 ---
 
+## 🌐 Live Demo
+
+| | Link |
+|---|---|
+| **🖥️ Website** | https://agent-guard-ten.vercel.app/ |
+| **⚙️ Backend API** | https://agent-guard-sh49.onrender.com |
+| **📖 Swagger UI** | https://agent-guard-sh49.onrender.com/docs |
+
+> **Note:** The backend is hosted on Render's free tier. If the first request takes 30–60 seconds, the server is spinning up from sleep — this is normal. Subsequent requests will be fast.
+
+---
+
 ## 📌 Problem Statement
 
 Autonomous AI agents are increasingly deployed for consequential work, yet industry benchmarks report failure on the majority of real-world tasks — with cited rates near 70%. Teams typically ship agents against a handful of manually written test prompts, so real failure modes surface only after deployment on live data.
@@ -63,11 +75,11 @@ Agent Definition (name + description + tools)
 ## 🏗️ Architecture
 
 ```
-Frontend (HTML/CSS/JS)
+Frontend (HTML/CSS/JS) — Vercel
         │
         │  HTTP POST /evaluate, /generate-tests, /report
         ▼
-FastAPI Backend (main.py)
+FastAPI Backend (main.py) — Render
         │
         ├── synthesizer.py  ──→  Groq API (openai/gpt-oss-120b)
         │                        Generates adversarial test cases
@@ -96,6 +108,7 @@ FastAPI Backend (main.py)
 - **CI/CD Deployment Gate.** Configurable safety score threshold — agents below the threshold are automatically blocked from deployment.
 - **Regression Tracker.** Save evaluation snapshots across versions to track reliability improvements over time.
 - **AI Copilot.** Ask natural language questions about your evaluation results.
+- **Fully deployed.** Backend on Render, frontend on Vercel — accessible globally with no local setup required.
 
 ---
 
@@ -110,6 +123,7 @@ FastAPI Backend (main.py)
 | Parallel Execution | Python ThreadPoolExecutor |
 | PDF Generation | ReportLab |
 | Frontend | HTML5, CSS3, Vanilla JavaScript |
+| Deployment | Render (backend), Vercel (frontend) |
 | Environment | python-dotenv |
 
 ---
@@ -127,14 +141,26 @@ agent-guard/
 │   ├── .env              # API keys (not committed)
 │   └── requirements.txt  # Python dependencies
 └── frontend/
-    ├── index.html         # Main application UI
-    ├── style.css       # Stylesheet
-    └── script.js            # Application logic + backend integration
+    ├── index.html        # Main application UI
+    ├── style.css         # Stylesheet
+    └── script.js         # Application logic + backend integration
 ```
 
 ---
 
-## 🚀 Local Setup and Run
+## 🚀 Quick Start (Live)
+
+Visit **https://agent-guard-ten.vercel.app/** — no setup required.
+
+1. Go to **Agent Setup** and define your agent
+2. Click **Save Agent & Continue to Attack Lab**
+3. Click **Run Evaluation** and wait ~60–90 seconds
+4. View results in **Live Traces** and **Reliability Report**
+5. Download the **PDF Report**
+
+---
+
+## 💻 Local Setup and Run
 
 ### Prerequisites
 - Python 3.10+
@@ -168,29 +194,23 @@ GROQ_API_KEY=your_groq_api_key_here
 
 ### Step 4: Start the backend server
 ```bash
-uvicorn main:app --reload
+uvicorn main:app --reload --host 0.0.0.0 --port 8000
 ```
-Backend runs at `http://127.0.0.1:8000`
+The local FastAPI server and Swagger docs will be live at `http://127.0.0.1:8000/docs`
 
-### Step 5: Open the frontend
-Open `frontend/type.html` directly in Chrome by double-clicking it in File Explorer.
+### Step 5: Configure Frontend for Local Backend
+> **Note:** By default, the frontend in this repository is wired to the live production backend (`https://agent-guard-sh49.onrender.com`).
 
----
+If you wish to point the frontend to your locally running backend server:
 
-## 📋 Requirements.txt
+1. Open `frontend/script.js` in any text editor.
+2. Update the `BASE_URL` constant near the top:
+   ```javascript
+   // Change from production URL to local backend:
+   const BASE_URL = "http://127.0.0.1:8000";
+   ```
 
-```
-fastapi
-uvicorn
-groq
-langchain
-langgraph
-langchain-groq
-langchain-core
-python-dotenv
-reportlab
-pydantic
-```
+3. Open `frontend/index.html` directly in Chrome by double-clicking it in File Explorer.
 
 ---
 
@@ -229,6 +249,7 @@ Current AI agent testing is manual, incomplete, and reactive. AgentGuard makes i
 - ✅ Real execution, not simulation
 - ✅ Actionable remediation advice
 - ✅ CI/CD ready
+- ✅ Fully deployed and accessible globally
 
 ---
 
